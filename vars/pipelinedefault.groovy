@@ -33,14 +33,14 @@ def call(body) {
 		
 		environment {
 			pom=''
-			ENCODING="UTF-8"
+			ENCODING='UTF-8'
 			JAVA_SOURCE=1.7
 			JAVA_TARGET=1.7
 			MODULOEARNAME=''
 			SLEEPQG=2
 			AMBDEPLOY = ''
 			TIPOCOMPONENTE = ''
-			STAGEDEPLOY=pipelineParams.STAGEDEPLOY
+			STAGEDEPLOY="${pipelineParams.STAGEDEPLOY}"
 			
 			CLUSTERDEPLOY=propValue("clusterdeploy")
 			CREDENCRTC=propValue('credencialrtc')
