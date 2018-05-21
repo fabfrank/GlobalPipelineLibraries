@@ -57,10 +57,12 @@ def call(body) {
 
 					script {
 						if (pipelineParams.EXCLUDECOMPONENTS.equals('NONE')) {
+						    print "pipelineParams.EXCLUDECOMPONENTS, Entrou 1: " + pipelineParams.EXCLUDECOMPONENTS
 							checkout([$class: 'RTCScm', avoidUsingToolkit: false, buildTool: 'jazz', buildType: [buildStream: "${pipelineParams.STR}", clearLoadDirectory: true, 
 								generateChangelogWithGoodBuild: true, loadDirectory: '', value: 'buildStream'], credentialsId: "${CREDENCRTC}", overrideGlobal: true, 
 								serverURI: 'https://portoalm.portoseguro.com.br/ccm', timeout: 480])
 						} else {
+						    print "pipelineParams.EXCLUDECOMPONENTS, Entrou 2: " + pipelineParams.EXCLUDECOMPONENTS
 							checkout([$class: 'RTCScm', avoidUsingToolkit: false, buildTool: 'jazz', buildType: [buildStream: "${pipelineParams.STR}", clearLoadDirectory: true, 
 								componentLoadConfig: 'excludeSomeComponents', componentsToExclude: "${pipelineParams.EXCLUDECOMPONENTS}", customizedSnapshotName: '', 
 								generateChangelogWithGoodBuild: true, loadDirectory: '', loadPolicy: 'useComponentLoadConfig', processArea: '', value: 'buildStream'], 
