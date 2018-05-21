@@ -40,7 +40,8 @@ def call(body) {
 			SLEEPQG=2
 			AMBDEPLOY = ''
 			TIPOCOMPONENTE = ''
-
+			STAGEDEPLOY=pipelineParams.STAGEDEPLOY
+			
 			CLUSTERDEPLOY=propValue("clusterdeploy")
 			CREDENCRTC=propValue('credencialrtc')
 			WORKITEM=propValue('workitem')
@@ -167,7 +168,7 @@ def call(body) {
 			stage("Executar Deploy em ambiente de Teste?") {
 				when {
 					expression { (isChanged() || isTriggered()) }
-					environment name: 'pipelineParams.STAGEDEPLOY', value: 'true'
+					environment name: 'STAGEDEPLOY', value: 'true'
 				}
 				steps {
 					
