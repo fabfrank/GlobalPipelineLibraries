@@ -7,62 +7,96 @@ def call(body) {
     body()
 	
 	pipeline {
-		agent {
-			label "master"
-		}
+    	agent {
+    		label 'master'
+    	}
+    
+    	triggers {
+    		cron('H 2 * * 1-5')
+    	}
+    
+    	options {
+    		buildDiscarder(logRotator(numToKeepStr: '15'))
+    		gitLabConnection('GitLabCorp')
+    		timeout(time: 120, unit:'MINUTES')
+    		timestamps()
+    	}
+    	
+    	tools {
+    		jdk 'jdk1.8.0_121'
+    	}
+    	
+    	environment {
+    		ENCODING='UTF-8'
+    		JAVA_SOURCE=1.7
+    		JAVA_TARGET=1.7
+    	}
+    
+    	stages {
+            stage('Preparando Rercursos') {
+                steps {
+    				cleanWs()
+    			}
+    			
+    			post {
+    				failure {
+    					script { env.FAILURE_STAGE = 'Preparando Rercursos' }
+    				}
+    			}
+    		}
+            		
+    		stage("'Run Tests JMeter") {
+                parallel {
+                    stage('Centralização de Calculo') {
+                        when {
+        					environment name: 'STAGECALCULO', value: 'true'
+        				}
+            			steps {
+            				cleanWs()
+            
+            				script {
+            					sh returnStatus: true, script: '/desenv/apache-jmeter-4.0/bin/jmeter.sh -Jjmeter.save.saveservice.output_format=xml -n -t /desenv/apache-jmeter-4.0/centralizacao/TesteCentralizacao_SOAP_REST_calculo_jenkins.jmx -l TesteCentralizacao_SOAP_REST_calculo_jenkins.jtl'
+            				}
+            			}
+            			
+            			post {
+            				failure {
+            					script { env.FAILURE_STAGE = 'Centralização de Calculo' }
+            				}
+            			}
+            		}
+        		    stage('Centralização de Consulta') {
+        		        when {
+        					environment name: 'STAGECONSULTA', value: 'true'
+        				}
 
-		parameters {
-			string(defaultValue: "", description: '', name: 'oldFileName')
-			string(defaultValue: "", description: '', name: 'fileName')
-			choice(choices: 'properties\nlog1\nlog2\nshared', description: 'Qual tipo de atualização?', name: 'tipoAtualizacao')
-			string(defaultValue: "", description: '', name: 'fileBase64')
-		}
-	
-		options {
-			buildDiscarder(logRotator(numToKeepStr: '5'))
-			gitLabConnection('GitLabCorp')
-			timeout(time: 1, unit:'MINUTES')
-			timestamps()
-		}
-
-		stages {
-			stage("Criando Parametros Json") {
-
-				steps {
-					cleanWs()
-					createFileAppJson(params.oldFileName, params.fileName, params.tipoAtualizacao, params.fileBase64)
-				}
-				
-				post {
-					failure {
-						script { env.FAILURE_STAGE = 'Criando Parametros Json' }
-					}
-				}
-			}
-			
-			stage("Executar Atualização") {
-
-				steps {
-					script {
-						sh 'curl -vX POST http://li2390/calculoaceitacaoautoWS/rest/api/utilitarios-calculo-aceitacao/upload -d @dataFile.json --header "Content-Type: application/json"'
-						sh 'curl -vX POST http://li2405:9089/calculoaceitacaoautoWS/rest/api/utilitarios-calculo-aceitacao/upload -d @dataFile.json --header "Content-Type: application/json"'
-						sh 'curl -vX POST http://li2406:9089/calculoaceitacaoautoWS/rest/api/utilitarios-calculo-aceitacao/upload -d @dataFile.json --header "Content-Type: application/json"'
-					}
-				}
-				
-				post {
-					failure {
-						script { env.FAILURE_STAGE = 'Executar Atualização' }
-					}
-				}
-			}
-		}
-		post {
-			failure {
-				notifyFailed("", "", "", env.FAILURE_STAGE, "${JOB_NAME}")
-			}
-		}
-	}
+            			steps {
+            				script {
+            					sh returnStatus: true, script: '/desenv/apache-jmeter-4.0/bin/jmeter.sh -Jjmeter.save.saveservice.output_format=xml -n -t /desenv/apache-jmeter-4.0/consulta/TesteCentralizacao_SOAP_REST_jenkins.jmx -l TesteCentralizacao_SOAP_REST_jenkins.jtl'
+            				}
+            			}
+            			
+            			post {
+            				failure {
+            					script { env.FAILURE_STAGE = 'Centralização de Consulta' }
+            				}
+            			}
+            		}
+            	}
+    	    }
+        }
+        post {
+    		failure {
+    			notifyFailed('', env.CANAL_ROCKETCHAT, '', env.FAILURE_STAGE, "${JOB_NAME}")
+    		}
+    		success {
+    		    perfReport errorFailedThreshold: 0, errorUnstableThreshold: 0, modePerformancePerTestCase: true, modeThroughput: true, percentiles: '0,50,90,100', sourceDataFiles: '**/*.jtl'
+    		}
+    		always {
+    			logstashSend failBuild: false, maxLines: 1000
+    		}
+    	}
+    }
 }
 def notifyStarted(CANAL_ROCKETCHAT, CHANGES, MODULOEARNAME) {
    rocketSend attachments: [[audioUrl: '', authorIcon: '', authorName: '', color: 'green', imageUrl: '', messageLink: '', text: "${CHANGES}", thumbUrl: '', title: "${MODULOEARNAME}", titleLink: "${env.BUILD_URL}", titleLinkDownload: '', videoUrl: '']], avatar: '${JENKINS_URL}static/ff676c77/images/headshot.png', channel: "${CANAL_ROCKETCHAT}", message: "STARTED: ${currentBuild.currentResult}", webhookToken: 'JyxPgTHx3EC6zNhab/d59qZ3AdGGNp47dihamry8wdzgZeohj4L9j5N6MTCNjKgoQb'
@@ -88,24 +122,11 @@ def notifyEmail(EMAIL_REPORT, CHANGES) {
 	)
 }
 
-def createFileAppJson(oldFileName, fileName, tipoAtualizacao, fileBase64) {
+@NonCPS
+def isTriggered() {
+  return (currentBuild.rawBuild.getCause(hudson.model.Cause$UpstreamCause) != null)
+}
 
-	def pathConfig = ['properties':'/WebSphere/AppServer/lib/app/properties', 'log1':'/WebSphere/AppServer/lib/app/config/logs', 'log2':'/WebSphere/AppServer/lib/app/config/logs2', 'shared':'/WebSphere/was_shared_libraries/sharedLib_Auto']
-	
-	path = pathConfig["${tipoAtualizacao}"]
-	
-	String text = '''{
-					"oldFileName": "oldFileNameValue",
-					"fileName": "fileNameValue",
-					"pathCopyFile": "pathValue",
-					"dataFile": "fileBase64Value"
-				}'''
-				
-				
-	text = text.replace('oldFileNameValue',"${oldFileName}")
-	text = text.replace('fileNameValue',"${fileName}")
-	text = text.replace('pathValue',"${path}")
-	text = text.replace('fileBase64Value',"${fileBase64}")
-	
-	writeFile encoding: 'UTF-8', file: 'dataFile.json', text: "${text}"
+def isChanged() {
+	return !getChangeString().contains('No new changes')
 }
