@@ -8,14 +8,14 @@ def call(body) {
 	
 	pipeline {
 		agent {
-			label any
+			label "master"
 		}
 
 		parameters {
-			string(defaultValue: true, description: '', name: 'oldFileName')
-			string(defaultValue: true, description: '', name: 'fileName')
-			choice(choices: 'properties\log1\log2\shared', description: 'Qual tipo de atualização?', name: 'tipoAtualizacao')
-			string(defaultValue: true, description: '', name: 'fileBase64')
+			string(defaultValue: "", description: '', name: 'oldFileName')
+			string(defaultValue: "", description: '', name: 'fileName')
+			choice(choices: 'properties\nlog1\nlog2\nshared', description: 'Qual tipo de atualização?', name: 'tipoAtualizacao')
+			string(defaultValue: "", description: '', name: 'fileBase64')
 		}
 	
 		options {
@@ -40,7 +40,7 @@ def call(body) {
 				}
 			}
 			
-			stage("Atualizando " + ${tipoAtualizacao}) {
+			stage("Executar Atualização") {
 
 				steps {
 					script {
@@ -52,7 +52,7 @@ def call(body) {
 				
 				post {
 					failure {
-						script { env.FAILURE_STAGE = 'Criando Parametros Json' }
+						script { env.FAILURE_STAGE = 'Executar Atualização' }
 					}
 				}
 			}
@@ -94,10 +94,18 @@ def createFileAppJson(oldFileName, fileName, tipoAtualizacao, fileBase64) {
 	
 	path = pathConfig["${tipoAtualizacao}"]
 	
-	writeFile encoding: 'UTF-8', file: 'dataFile.json', text: '''{
-									"oldFileName": "${oldFileName}",
-									"fileName": "${fileName}",
-									"pathCopyFile": "${path}",
-									"dataFile": "${fileBase64}"
-								}'''
+	String text = '''{
+					"oldFileName": "oldFileNameValue",
+					"fileName": "fileNameValue",
+					"pathCopyFile": "pathValue",
+					"dataFile": "fileBase64Value"
+				}'''
+				
+				
+	text = text.replace('oldFileNameValue',"${oldFileName}")
+	text = text.replace('fileNameValue',"${fileName}")
+	text = text.replace('pathValue',"${path}")
+	text = text.replace('fileBase64Value',"${fileBase64}")
+	
+	writeFile encoding: 'UTF-8', file: 'dataFile.json', text: "${text}"
 }
