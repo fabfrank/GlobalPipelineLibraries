@@ -27,9 +27,8 @@ def call(body) {
     	}
     	
     	environment {
-    		ENCODING='UTF-8'
-    		JAVA_SOURCE=1.7
-    		JAVA_TARGET=1.7
+    		STAGECALCULO="${pipelineParams.STAGECALCULO}"
+	        STAGECONSULTA="${pipelineParams.STAGECONSULTA}"
     	}
     
     	stages {
@@ -61,7 +60,7 @@ def call(body) {
             			
             			post {
             				failure {
-            					script { env.FAILURE_STAGE = 'Run JMeter Test' }
+            					script { env.FAILURE_STAGE = 'Centralização de Calculo' }
             				}
             			}
             		}
@@ -72,30 +71,30 @@ def call(body) {
 
             			steps {
             				script {
-            					sh returnStatus: true, script: '/desenv/apache-jmeter-4.0/bin/jmeter.sh -Jjmeter.save.saveservice.output_format=xml -n -t /desenv/apache-jmeter-4.0/consulta/TesteCentralizacao_SOAP_REST_jenkins.jmx -l TesteCentralizacao_SOAP_REST_jenkins.jtl'
+            					sh returnStatus: true, script: '/desenv/apache-jmeter-4.0/bin/jmeter.sh -Jjmeter.save.saveservice.output_format=xml -n -t /desenv/apache-jmeter-4.0/consulta/TesteCentralizacao_SOAP_REST_Jenkins.jmx -l TesteCentralizacao_SOAP_REST_Jenkins.jmx.jtl'
             				}
             			}
             			
             			post {
             				failure {
-            					script { env.FAILURE_STAGE = 'Run JMeter Test' }
+            					script { env.FAILURE_STAGE = 'Centralização de Consulta' }
             				}
             			}
             		}
             	}
     	    }
-        	post {
-        		failure {
-        			notifyFailed('', env.CANAL_ROCKETCHAT, '', env.FAILURE_STAGE, "${JOB_NAME}")
-        		}
-        		success {
-        		    perfReport errorFailedThreshold: 0, errorUnstableThreshold: 0, modePerformancePerTestCase: true, modeThroughput: true, percentiles: '0,50,90,100', sourceDataFiles: '**/*.jtl'
-        		}
-        		always {
-        			logstashSend failBuild: false, maxLines: 1000
-        		}
-        	}
         }
+        post {
+    		failure {
+    			notifyFailed('', env.CANAL_ROCKETCHAT, '', env.FAILURE_STAGE, "${JOB_NAME}")
+    		}
+    		success {
+    		    perfReport errorFailedThreshold: 0, errorUnstableThreshold: 0, modePerformancePerTestCase: true, modeThroughput: true, percentiles: '0,50,90,100', sourceDataFiles: '**/*.jtl'
+    		}
+    		always {
+    			logstashSend failBuild: false, maxLines: 1000
+    		}
+    	}
     }
 }
 def notifyStarted(CANAL_ROCKETCHAT, CHANGES, MODULOEARNAME) {
