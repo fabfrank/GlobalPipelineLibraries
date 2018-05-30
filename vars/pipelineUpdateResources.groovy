@@ -95,9 +95,9 @@ def createFileAppJson(oldFileName, fileName, tipoAtualizacao, fileBase64) {
 	path = pathConfig["${tipoAtualizacao}"]
 	
 	writeFile encoding: 'UTF-8', file: 'dataFile.json', text: '''{
-															"oldFileName": "${oldFileName}",
-															"fileName": "${fileName}",
-															"pathCopyFile": "${path}",
-															"dataFile": "${fileBase64}"
-														}'''
+									"oldFileName": "${oldFileName}",
+									"fileName": "${fileName}",
+									"pathCopyFile": "${path}",
+									"dataFile": "${fileBase64}"
+								}'''
 }
